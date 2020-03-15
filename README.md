@@ -1,4 +1,4 @@
-# kaleidoscope
+# Kaleidoscope
 JIT compiler for the toy language Kaleidoscope. Based on a [tutorial](http://www.stephendiehl.com/llvm/#chapter-1-introduction), but updated for LLVM 6.0.
 
 # Setup
