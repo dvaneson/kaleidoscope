@@ -11,4 +11,4 @@ First
 
 Then you can run the source code with
 
-`$ stack exec <TO-DO>`
+`$ stack exec ksi`
