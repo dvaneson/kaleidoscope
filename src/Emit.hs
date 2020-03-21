@@ -18,6 +18,7 @@ import Data.Int
 import Control.Monad.Except
 import Control.Applicative
 import qualified Data.Map as Map
+import qualified Data.ByteString as B
 
 import Codegen
 import qualified Syntax as S
@@ -93,21 +94,12 @@ cgen (S.Call fn args) = do
 -- Compilation
 -------------------------------------------------------------------------------
 
-liftError :: ExceptT String IO a -> IO a
-liftError = runExceptT >=> either fail return
-
 codegen :: AST.Module -> [S.Expr] -> IO AST.Module
 codegen mod fns = withContext $ \context ->
-  -- liftError 
-    -- $ withModuleFromAST context newast 
-      -- $ \m -> do
-        -- llstr <- moduleLLVMAssembly m
-        -- putStrLn $ show llstr
-        -- return newast
   withModuleFromAST context newast
     $ \m -> do
       llstr <- moduleLLVMAssembly m
-      putStrLn $ show llstr
+      B.putStrLn llstr
       return newast
   where
     modn    = mapM codegenTop fns
