@@ -24,13 +24,16 @@ dependencies:
 - parsec >= 3.1
 - haskeline >= 0.7.1.2
 - mtl >= 2.1.3
+- llvm-hs == 6.0.0
+- llvm-hs-pure == 6.0.0
+- containers >= 0.4
 
 
 library:
   source-dirs: src
 
 executables:
-  ksi:
+  ks:
     main:                Main.hs
     source-dirs:         app
     ghc-options:

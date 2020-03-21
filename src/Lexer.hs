@@ -10,7 +10,7 @@ import qualified Text.Parsec.Token as Tok
 lexer :: Tok.TokenParser ()
 lexer = Tok.makeTokenParser style
   where
-    ops = ["+", "*", "-", ";"]
+    ops = ["+", "*", "-", "/", ";", ",", "<"]
     names = ["def", "extern"]
     style = emptyDef {
               Tok.commentLine = "#"
@@ -30,6 +30,9 @@ identifier = Tok.identifier lexer
 
 parens :: Parser a -> Parser a
 parens = Tok.parens lexer
+
+whiteSpace :: Parser ()
+whiteSpace = Tok.whiteSpace lexer
 
 commaSep :: Parser a -> Parser [a]
 commaSep = Tok.commaSep lexer
