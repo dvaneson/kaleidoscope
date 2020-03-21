@@ -26,6 +26,15 @@ You will be greeted by a command prompt that says `read> `. Enter in the Kaledis
 
 Example usage
 ```
+ready> 4+5;
+; ModuleID = 'my cool jit'
+source_filename = "<string>"
+
+define double @main() {
+entry:
+  ret double 9.000000e+00
+}
+
 ready> def foo(a b) a*a + 2*a*b + b*b;
 ; ModuleID = 'my cool jit'
 
