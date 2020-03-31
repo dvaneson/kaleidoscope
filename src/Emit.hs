@@ -18,13 +18,13 @@ import Data.Int
 import Control.Monad.Except
 import Control.Applicative
 import qualified Data.Map as Map
-import qualified Data.ByteString as B
+import qualified Data.ByteString.Char8 as B
 
 import Codegen
 import qualified Syntax as S
 
 toSig :: [String] -> [(AST.Type, AST.Name)]
-toSig = map (\x -> (double, AST.Name (fromString x)))
+toSig = map (\x -> (double, AST.mkName x))
 
 codegenTop :: S.Expr -> LLVM ()
 codegenTop (S.Function name args body) = do
@@ -36,7 +36,7 @@ codegenTop (S.Function name args body) = do
       setBlock entry
       forM args $ \a -> do
         var <- alloca double
-        store var (local (AST.Name $ fromString a))
+        store var (local (AST.mkName a))
         assign a var
       cgen body >>= ret
 
@@ -100,7 +100,7 @@ codegen mod fns = withContext $ \context ->
     $ \m -> do
       llstr <- moduleLLVMAssembly m
       B.putStrLn llstr
-      return newast
+      pure newast
   where
     modn    = mapM codegenTop fns
     newast  = runLLVM mod modn
