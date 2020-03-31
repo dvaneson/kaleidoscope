@@ -28,7 +28,7 @@ import qualified LLVM.AST.FloatingPointPredicate as FP
 -- Types
 -------------------------------------------------------------------------------
 
--- 32-bit floating point value
+-- 64-bit floating point value
 double :: Type
 double = FloatingPointType DoubleFP
 
@@ -68,6 +68,86 @@ data BlockState
   } deriving Show
 
 -------------------------------------------------------------------------------
+-- Module Level
+-------------------------------------------------------------------------------
+
+newtype LLVM a = LLVM (State AST.Module a)
+  deriving (Functor, Applicative, Monad, MonadState AST.Module )
+
+runLLVM :: AST.Module -> LLVM a -> AST.Module
+runLLVM mod (LLVM m) = execState m mod
+
+emptyModule :: String -> AST.Module
+emptyModule label = defaultModule { moduleName = fromString label }
+
+addDefn :: Definition -> LLVM ()
+addDefn d = do
+  defs <- gets moduleDefinitions
+  modify $ \s -> s { moduleDefinitions = defs ++ [d] }
+
+define ::  Type -> String -> [(Type, Name)] -> [BasicBlock] -> LLVM ()
+define retty label argtys body = addDefn $
+  GlobalDefinition $ functionDefaults {
+    name        = mkName label
+  , parameters  = ([Parameter ty nm [] | (ty, nm) <- argtys], False)
+  , returnType  = retty
+  , basicBlocks = body
+  }
+
+external ::  Type -> String -> [(Type, Name)] -> LLVM ()
+external retty label argtys = addDefn $
+  GlobalDefinition $ functionDefaults {
+    name        = mkName label
+  , linkage     = L.External
+  , parameters  = ([Parameter ty nm [] | (ty, nm) <- argtys], False)
+  , returnType  = retty
+  , basicBlocks = []
+  }
+
+-------------------------------------------------------------------------------
+-- Block Stack
+-------------------------------------------------------------------------------
+
+entry :: Codegen Name
+entry = gets currentBlock
+
+addBlock :: String -> Codegen Name
+addBlock bname = do
+  bls <- gets blocks
+  ix  <- gets blockCount
+  nms <- gets names
+
+  let new = emptyBlock ix
+      (qname, supply) = uniqueName bname nms
+
+  modify $ \s -> s { blocks = Map.insert (mkName qname) new bls
+                   , blockCount = ix + 1
+                   , names = supply
+                   }
+  pure (mkName qname)
+
+setBlock :: Name -> Codegen Name
+setBlock bname = do
+  modify $ \s -> s { currentBlock = bname }
+  pure bname
+
+getBlock :: Codegen Name
+getBlock = gets currentBlock
+
+modifyBlock :: BlockState -> Codegen ()
+modifyBlock new = do
+  active <- gets currentBlock
+  modify $ \s -> s { blocks = Map.insert active new (blocks s) }
+
+current :: Codegen BlockState
+current = do
+  c <- gets currentBlock
+  blks <- gets blocks
+  case Map.lookup c blks of
+    Just x -> pure x
+    Nothing -> error $ "No such block: " ++ show c
+
+-------------------------------------------------------------------------------
 -- Codegen Operations
 -------------------------------------------------------------------------------
 
@@ -93,7 +173,7 @@ emptyBlock :: Int -> BlockState
 emptyBlock i = BlockState i [] Nothing
 
 emptyCodegen :: CodegenState
-emptyCodegen = CodegenState (Name $ fromString entryBlockName) Map.empty [] 1 0 Map.empty
+emptyCodegen = CodegenState (mkName entryBlockName) Map.empty [] 1 0 Map.empty
 
 execCodegen :: Codegen a -> CodegenState
 execCodegen m = execState (runCodegen m) emptyCodegen
@@ -102,102 +182,27 @@ fresh :: Codegen Word
 fresh = do
   i <- gets count
   modify $ \s -> s { count = 1 + i }
-  return $ i + 1
+  pure $ i + 1
 
 instr :: Instruction -> Codegen (Operand)
 instr ins = do
   n <- fresh
   let ref = (UnName n)
   blk <- current
-  let i = stack blk
-  modifyBlock (blk { stack = (ref := ins) : i } )
-  return $ local ref
+  modifyBlock $ blk { stack = (ref := ins) : stack blk }
+  pure $ local ref
+
+instrVoid :: Instruction -> Codegen ()
+instrVoid ins = do
+  blk <- current
+  modifyBlock $ blk { stack = Do ins : stack blk }
+  pure ()
 
 terminator :: Named Terminator -> Codegen (Named Terminator)
 terminator trm = do
   blk <- current
   modifyBlock (blk { term = Just trm })
-  return trm
-
--------------------------------------------------------------------------------
--- Module Level
--------------------------------------------------------------------------------
-
-newtype LLVM a = LLVM (State AST.Module a)
-  deriving (Functor, Applicative, Monad, MonadState AST.Module )
-
-runLLVM :: AST.Module -> LLVM a -> AST.Module
-runLLVM mod (LLVM m) = execState m mod
-
-emptyModule :: String -> AST.Module
-emptyModule label = defaultModule { moduleName = fromString label }
-
-addDefn :: Definition -> LLVM ()
-addDefn d = do
-  defs <- gets moduleDefinitions
-  modify $ \s -> s { moduleDefinitions = defs ++ [d] }
-
-define ::  Type -> String -> [(Type, Name)] -> [BasicBlock] -> LLVM ()
-define retty label argtys body = addDefn $
-  GlobalDefinition $ functionDefaults {
-    name        = Name (fromString label)
-  , parameters  = ([Parameter ty nm [] | (ty, nm) <- argtys], False)
-  , returnType  = retty
-  , basicBlocks = body
-  }
-
-external ::  Type -> String -> [(Type, Name)] -> LLVM ()
-external retty label argtys = addDefn $
-  GlobalDefinition $ functionDefaults {
-    name        = Name (fromString label)
-  , linkage     = L.External
-  , parameters  = ([Parameter ty nm [] | (ty, nm) <- argtys], False)
-  , returnType  = retty
-  , basicBlocks = []
-  }
-
--------------------------------------------------------------------------------
--- Block Stack
--------------------------------------------------------------------------------
-
-entry :: Codegen Name
-entry = gets currentBlock
-
-addBlock :: String -> Codegen Name
-addBlock bname = do
-  bls <- gets blocks
-  ix  <- gets blockCount
-  nms <- gets names
-
-  let new = emptyBlock ix
-      (qname, supply) = uniqueName bname nms
-
-  modify $ \s -> s { blocks = Map.insert (Name $ fromString qname) new bls
-                   , blockCount = ix + 1
-                   , names = supply
-                   }
-  return (Name $ fromString qname)
-
-setBlock :: Name -> Codegen Name
-setBlock bname = do
-  modify $ \s -> s { currentBlock = bname }
-  return bname
-
-getBlock :: Codegen Name
-getBlock = gets currentBlock
-
-modifyBlock :: BlockState -> Codegen ()
-modifyBlock new = do
-  active <- gets currentBlock
-  modify $ \s -> s { blocks = Map.insert active new (blocks s) }
-
-current :: Codegen BlockState
-current = do
-  c <- gets currentBlock
-  blks <- gets blocks
-  case Map.lookup c blks of
-    Just x -> return x
-    Nothing -> error $ "No such block: " ++ show c
+  pure trm
 
 -------------------------------------------------------------------------------
 -- Symbol Table
@@ -212,7 +217,7 @@ getvar :: String -> Codegen Operand
 getvar var = do
   syms <- gets symtab
   case lookup var syms of
-    Just x  -> return x
+    Just x  -> pure x
     Nothing -> error $ "Local variable not in scope: " ++ show var
 
 -------------------------------------------------------------------------------
@@ -266,8 +271,8 @@ call fn args = instr $ Call Nothing CC.C [] (Right fn) (toArgs args) [] []
 alloca :: Type -> Codegen Operand
 alloca ty = instr $ Alloca ty Nothing 0 []
 
-store :: Operand -> Operand -> Codegen Operand
-store ptr val = instr $ Store False ptr val Nothing 0 []
+store :: Operand -> Operand -> Codegen ()
+store ptr val = instrVoid $ Store False ptr val Nothing 0 []
 
 load :: Operand -> Codegen Operand
 load ptr = instr $ Load False ptr Nothing 0 []
