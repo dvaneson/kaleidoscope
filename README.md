@@ -63,4 +63,4 @@ entry:
 ```
 
 # Current Functionality
-Can only convert Kalediscope code into LLVM IR, and right now it throws an `EncodeException` when trying to use a function.
+Can only convert Kalediscope code into LLVM IR.
