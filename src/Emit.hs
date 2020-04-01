@@ -76,7 +76,7 @@ cgen (S.BinaryOp "=" (S.Var var) val) = do
   a <- getvar var
   cval <- cgen val
   store a cval
-  return cval
+  pure cval
 cgen (S.BinaryOp op a b) = do
   case Map.lookup op binops of
     Just f  -> do
@@ -85,10 +85,11 @@ cgen (S.BinaryOp op a b) = do
       f ca cb
     Nothing -> error "No such operator"
 cgen (S.Var x) = getvar x >>= load
-cgen (S.Float n) = return $ cons $ C.Float (F.Double n)
+cgen (S.Float n) = pure $ cons $ C.Float (F.Double n)
 cgen (S.Call fn args) = do
   largs <- mapM cgen args
-  call (externf (AST.Name $ fromString fn)) largs
+  let len = length largs
+  call (externf len $ AST.mkName fn) largs
 
 -------------------------------------------------------------------------------
 -- Compilation

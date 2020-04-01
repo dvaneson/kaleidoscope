@@ -18,6 +18,7 @@ import LLVM.AST
 import LLVM.AST.Global
 import qualified LLVM.AST as AST
 
+import qualified LLVM.AST.Type as T
 import qualified LLVM.AST.Linkage as L
 import qualified LLVM.AST.Constant as C
 import qualified LLVM.AST.Attribute as A
@@ -31,6 +32,10 @@ import qualified LLVM.AST.FloatingPointPredicate as FP
 -- 64-bit floating point value
 double :: Type
 double = FloatingPointType DoubleFP
+
+-- Function that returns a double
+--doublef :: Type
+--doublef =
 
 -------------------------------------------------------------------------------
 -- Names
@@ -230,8 +235,8 @@ local = LocalReference double
 global ::  Name -> C.Constant
 global = C.GlobalReference double
 
-externf :: Name -> Operand
-externf = ConstantOperand . C.GlobalReference double
+externf :: Int -> Name -> Operand
+externf n = ConstantOperand . C.GlobalReference (T.ptr (FunctionType double (replicate n double) False)) -- Change to PointerType w/ FunctionType or something
 
 -------------------------------------------------------------------------------
 -- Arithmetic and Constants
