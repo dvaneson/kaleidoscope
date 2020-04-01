@@ -35,9 +35,7 @@ codegenTop (S.Function name args body) = do
       entry <- addBlock entryBlockName
       setBlock entry
       forM args $ \a -> do
-        var <- alloca double
-        store var (local (AST.mkName a))
-        assign a var
+        assign a (local (AST.mkName a))
       cgen body >>= ret
 
 codegenTop (S.Extern name args) = do
@@ -84,7 +82,7 @@ cgen (S.BinaryOp op a b) = do
       cb <- cgen b
       f ca cb
     Nothing -> error "No such operator"
-cgen (S.Var x) = getvar x >>= load
+cgen (S.Var x) = getvar x
 cgen (S.Float n) = pure $ cons $ C.Float (F.Double n)
 cgen (S.Call fn args) = do
   largs <- mapM cgen args

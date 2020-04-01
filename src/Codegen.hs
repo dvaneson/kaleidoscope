@@ -189,7 +189,7 @@ fresh = do
   modify $ \s -> s { count = 1 + i }
   pure $ i + 1
 
-instr :: Instruction -> Codegen (Operand)
+instr :: Instruction -> Codegen Operand
 instr ins = do
   n <- fresh
   let ref = (UnName n)
