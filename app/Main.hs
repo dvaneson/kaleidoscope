@@ -19,10 +19,12 @@ process :: AST.Module -> String -> IO (Maybe AST.Module)
 process modo source = do
   let res = parseToplevel source
   case res of
-    Left err -> print err >> return Nothing
+    Left err -> do 
+      print err
+      pure Nothing
     Right ex -> do
       ast <- codegen modo ex
-      return $ Just ast
+      pure $ Just ast
 
 processFile :: String -> IO (Maybe AST.Module)
 processFile fname = readFile fname >>= process initModule
