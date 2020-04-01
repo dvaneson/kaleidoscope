@@ -33,9 +33,9 @@ import qualified LLVM.AST.FloatingPointPredicate as FP
 double :: Type
 double = FloatingPointType DoubleFP
 
--- Function that returns a double
---doublef :: Type
---doublef =
+-- Function type that returns a double and only has double type for arguments
+doublef :: Int -> Type
+doublef n = FunctionType double (replicate n double) False
 
 -------------------------------------------------------------------------------
 -- Names
@@ -236,7 +236,7 @@ global ::  Name -> C.Constant
 global = C.GlobalReference double
 
 externf :: Int -> Name -> Operand
-externf n = ConstantOperand . C.GlobalReference (T.ptr (FunctionType double (replicate n double) False)) -- Change to PointerType w/ FunctionType or something
+externf n = ConstantOperand . C.GlobalReference (T.ptr $ doublef n)
 
 -------------------------------------------------------------------------------
 -- Arithmetic and Constants
