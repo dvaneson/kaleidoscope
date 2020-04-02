@@ -1,10 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Emit where
+module Emit (codegen, cgen, codegenTop) where
 
 import LLVM.Prelude
-import Data.String
-
 import LLVM.Module
 import LLVM.Context
 
@@ -15,12 +13,14 @@ import qualified LLVM.AST.FloatingPointPredicate as FP
 
 import Data.Word
 import Data.Int
+import Data.String
 import Control.Monad.Except
 import Control.Applicative
 import qualified Data.Map as Map
 import qualified Data.ByteString.Char8 as B
 
 import Codegen
+import JIT
 import qualified Syntax as S
 
 toSig :: [String] -> [(AST.Type, AST.Name)]
@@ -94,12 +94,9 @@ cgen (S.Call fn args) = do
 -------------------------------------------------------------------------------
 
 codegen :: AST.Module -> [S.Expr] -> IO AST.Module
-codegen mod fns = withContext $ \context ->
-  withModuleFromAST context newast
-    $ \m -> do
-      llstr <- moduleLLVMAssembly m
-      B.putStrLn llstr
-      pure newast
+codegen mod fns = do
+    newast <- runJIT oldast
+    pure newast
   where
     modn    = mapM codegenTop fns
-    newast  = runLLVM mod modn
+    oldast  = runLLVM mod modn
