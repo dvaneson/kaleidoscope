@@ -113,11 +113,10 @@ topgen exp = do
       opgen xs exp >>= ret
 
 -- Expression level generator that recurisvely walks the AST
--- Maybe it should return functions that take operans? Idk
 opgen 
   :: MonadIRBuilder m
   => [Operand]    -- The list of in use operands
-  -> S.Expr           -- The to parse and convert into an operand
+  -> S.Expr       -- The to parse and convert into an operand
   -> m Operand    -- The resulting operand
 opgen ops (S.UnaryOp op a) = do
   opgen ops $ S.Call ("unary" ++ op) [a]
