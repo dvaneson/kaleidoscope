@@ -19,7 +19,7 @@ You can also compile and run specific files with
 
 For example
 
-```$ stack exec ks examples/chapter3.k```
+```$ stack exec ks examples/add.k```
 
 # REPL Usage
 You will be greeted by a command prompt that says `read> `. Enter in the Kalediscopoe code, ending with a `;`, and press enter to run the command. To exit, press ctrl-d.
