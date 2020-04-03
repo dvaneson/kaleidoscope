@@ -76,9 +76,10 @@ updateModule
   :: Module            -- The module to update
   -> ModuleBuilder a   -- The module builder to update with
   -> Module            -- The updated module
-updateModule mod modb = mod 
-  { moduleDefinitions = execModuleBuilder emptyModuleBuilder modb
-  }
+updateModule mod modb = mod { moduleDefinitions = defs ++ newdefs }
+    where
+      defs    = moduleDefinitions mod
+      newdefs = execModuleBuilder emptyModuleBuilder modb
 
 -------------------------------------------------------------------------------
 -- Emitters
@@ -95,7 +96,7 @@ topgen (S.Function name args body) = do
     label  = mkName name
     argtys = toSig args
     retty  = T.double
-    buildf = \xs -> do
+    buildf = \xs ->
       opgen xs body >>= ret
 
 topgen (S.Extern name args) = do
@@ -106,10 +107,11 @@ topgen (S.Extern name args) = do
     retty  = T.double
 
 topgen exp = do
-  function "main" [] retty buildf
+  function label [] retty buildf
   where
+    label  = mkName "main"
     retty  = T.double
-    buildf = \xs -> do
+    buildf = \xs ->
       opgen xs exp >>= ret
 
 -- Expression level generator that recurisvely walks the AST
@@ -155,7 +157,7 @@ opgen ops (S.Call fn args) = do
 
 -- Generates string representation of the LLVM IR from the AST
 -- Uses JIT to generate LLVM IR with an optimization pass
--- Uses topGen and opgen to generate from the AST
+-- Uses topgen and opgen to generate from the AST
 codegen :: Module -> [S.Expr] -> IO Module
 codegen mod fns = do
     newast <- runJIT oldast
