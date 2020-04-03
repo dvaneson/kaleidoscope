@@ -59,5 +59,13 @@ entry:
 }
 ```
 
+# Kalediscope files
+There are several example files in the `examples` directory. 
+  - `add.k` just adds two numbers together, 
+  - `extern.k` tests the usage of external functions. The JIT has some functions already defined in its address space, such as `sin` and `cos`. It is also possible to write C functions that can be found and executed with the LLVM JIT. For demonstration the C function `putchard`, whose implementation is in `cbits/putchard.c`, prints an ASCII character to the console. So, `extern.k` first declares the external functions `sin`, `cos`, and `putchard`. Then, it should print an 'x' followed by a newline, and lastly print the result of `sin(1)+cos(0.5)`.
+  - `fn_call.k` tests the creation and use of functions. Also tests functions calling other functions in the module as well as external functions.
+
 # Current Functionality
-Convert Kalediscope code into LLVM IR.
+Convert Kalediscope code into LLVM IR, then if a function named "main" exists, it is executed using JIT compilation.
+
+

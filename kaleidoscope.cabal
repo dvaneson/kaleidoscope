@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 4c2a7a84ae1cd3e4e60ac9df87bedb44588db4db929a4858841386c97c73a5b7
+-- hash: bfea0afe2785c554df69a1847d0d20ed9b23b57d6f5ec9f8c24959b28738f8d1
 
 name:           kaleidoscope
 version:        0.1.0.0
@@ -36,6 +36,8 @@ library
       Paths_kaleidoscope
   hs-source-dirs:
       src
+  c-sources:
+      cbits/putchard.c
   build-depends:
       base >=4.7 && <5
     , bytestring >=0.10.8.1
@@ -54,7 +56,7 @@ executable ks
       Paths_kaleidoscope
   hs-source-dirs:
       app
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N -optl -rdynamic
   build-depends:
       base >=4.7 && <5
     , bytestring >=0.10.8.1

@@ -33,6 +33,7 @@ dependencies:
 
 library:
   source-dirs: src
+  c-sources: cbits/putchard.c
 
 executables:
   ks:
@@ -42,6 +43,8 @@ executables:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
+    - -optl
+    - -rdynamic
     dependencies:
     - kaleidoscope
 
