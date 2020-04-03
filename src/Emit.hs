@@ -90,6 +90,10 @@ getop (LocalReference ty nm:xs) var =
      then pure $ LocalReference ty nm
      else getop xs var
 
+-- Generates a fresh variable name from a String
+frsh :: MonadIRBuilder m => String -> m Name
+frsh = freshName . fromString
+
 -- Gets the name of the PartialBlock (current block being added to)
 currName :: MonadIRBuilder m => m Name
 currName = do
@@ -147,9 +151,9 @@ topgen exp = do
 -- Expression level generator that recurisvely walks the AST
 opgen 
   :: MonadIRBuilder m
-  => [Operand]    -- The list of in use operands
-  -> S.Expr       -- The to parse and convert into an operand
-  -> m Operand    -- The resulting operand
+  => [Operand]        -- The list of in use operands
+  -> S.Expr           -- The to parse and convert into an operand
+  -> m Operand        -- The resulting operand
 opgen ops (S.UnaryOp op a) = do
   opgen ops $ S.Call ("unary" ++ op) [a]
 
@@ -207,8 +211,6 @@ opgen ops (S.If c t f) = do
   -- if.exit block
   emitBlockStart ifexit
   phi [(tval, ifthen), (fval, ifelse)]
-    where
-      frsh = freshName . fromString
       
 -------------------------------------------------------------------------------
 -- Compilation
