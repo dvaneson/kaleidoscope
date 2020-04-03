@@ -1,7 +1,6 @@
 module Main where
 
 import Parser
-import Codegen
 import Emit
 
 import Control.Monad.Trans
@@ -13,7 +12,7 @@ import System.Console.Haskeline
 import qualified LLVM.AST as AST
 
 initModule :: AST.Module
-initModule = emptyModule "my cool jit"
+initModule = emptyModule "my cool jit" 
 
 process :: AST.Module -> String -> IO (Maybe AST.Module)
 process modo source = do

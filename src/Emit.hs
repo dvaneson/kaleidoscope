@@ -1,7 +1,7 @@
 -- An update to the Emit module that uses the LLVM IR builder API instead of Codegen
 {-# LANGUAGE OverloadedStrings #-}
 
-module Emit (codegen) where
+module Emit (codegen, emptyModule) where
 
 import Data.String
 import qualified Data.Map as Map
@@ -67,6 +67,9 @@ doublef n = FunctionType T.double args False
 -- Create a function pointer type with the given number of arguments
 fnPtr :: Int -> Name -> Operand
 fnPtr n = ConstantOperand . C.GlobalReference (T.ptr $ doublef n)
+
+emptyModule :: String -> Module
+emptyModule label = defaultModule { moduleName = fromString label }
 
 -- Updates a module using the defintions from a ModuleBuilder
 updateModule 

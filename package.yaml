@@ -28,6 +28,7 @@ dependencies:
 - llvm-hs-pure == 6.0.0
 - containers >= 0.4
 - bytestring >= 0.10.8.1
+- transformers >= 0.5.2.0
 
 
 library:
