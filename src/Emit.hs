@@ -19,6 +19,7 @@ import LLVM.AST.Typed (typeOf)
 import qualified LLVM.AST.Type as T
 import qualified LLVM.AST.Constant as C
 import qualified LLVM.AST.Float as F
+import qualified LLVM.AST.FloatingPointPredicate as FP
 
 import JIT
 import qualified Syntax as S
@@ -28,12 +29,42 @@ import qualified Syntax as S
 -- Helpers
 -------------------------------------------------------------------------------
 
+-- For easily using conditionals
+one = cons $ C.Float (F.Double 1.0)
+zero = cons $ C.Float (F.Double 0.0)
+false = zero
+true = one
+
+-- Produce a local operand with a name
 local ::  Name -> Operand
 local = LocalReference T.double
+
+-- Produce a constant operand
+cons :: C.Constant -> Operand
+cons = ConstantOperand
+
+-- Function type that returns a double and only has double type for arguments
+doublef :: Int -> Type
+doublef n = FunctionType T.double args False
+  where
+    args = replicate n T.double
+
+-- Create a function pointer type with the given number of arguments
+fnPtr :: Int -> Name -> Operand
+fnPtr n = ConstantOperand . C.GlobalReference (T.ptr $ doublef n)
 
 -- Converts a list of argument names to a list of double type arguments
 toSig :: [String] -> [(Type, ParameterName)]
 toSig = map (\x -> (T.double, ParameterName $ fromString x))
+
+lt 
+  :: MonadIRBuilder m
+  => Operand 
+  -> Operand 
+  -> m Operand
+lt a b = do
+  test <- fcmp FP.ULT a b
+  uitofp test T.double
 
 -- Map of binary operators
 binops 
@@ -44,6 +75,7 @@ binops = Map.fromList [
     , ("-", fsub)
     , ("*", fmul)
     , ("/", fdiv)
+    , ("<", lt)
   ]
 
 -- Gets an operator from the operator list based on the name provided
@@ -58,15 +90,13 @@ getop (LocalReference ty nm:xs) var =
      then pure $ LocalReference ty nm
      else getop xs var
 
--- Function type that returns a double and only has double type for arguments
-doublef :: Int -> Type
-doublef n = FunctionType T.double args False
-  where
-    args = replicate n T.double
-
--- Create a function pointer type with the given number of arguments
-fnPtr :: Int -> Name -> Operand
-fnPtr n = ConstantOperand . C.GlobalReference (T.ptr $ doublef n)
+-- Gets the name of the PartialBlock (current block being added to)
+currName :: MonadIRBuilder m => m Name
+currName = do
+  mbb <- liftIRState $ gets builderBlock
+  case mbb of
+    Nothing -> pure $ mkName ""
+    Just pb -> pure $ partialBlockName pb
 
 emptyModule :: String -> Module
 emptyModule label = defaultModule { moduleName = fromString label }
@@ -139,7 +169,7 @@ opgen ops (S.BinaryOp op a b) = do
 
 opgen ops (S.Var x) = getop ops (mkName x)
 
-opgen _ (S.Float n) = pure $ ConstantOperand $ C.Float (F.Double n)
+opgen _ (S.Float n) = pure $ cons $ C.Float (F.Double n)
 
 opgen ops (S.Call fn args) = do
   largs <- mapM (opgen ops) args
@@ -149,8 +179,37 @@ opgen ops (S.Call fn args) = do
     where
       len = length args
       ptr = fnPtr len (mkName fn)
-      
 
+opgen ops (S.If c t f) = do
+  -- Produce fresh names for the if/then/else blocks
+  ifthen <- frsh "if.then"
+  ifelse <- frsh "if.else"
+  ifexit <- frsh "if.exit"
+
+  -- entry block
+  cond <- opgen ops c
+  test <- fcmp FP.ONE false cond
+  condBr test ifthen ifelse       -- Branch based on condition
+
+  -- if.then block
+  emitBlockStart ifthen
+  tval <- opgen ops t             -- Generate code for true branch
+  br ifexit                       -- Branch to the merge block
+  ifthen <- currName              -- Block may have changed from opgen, 
+                                  -- i.e. nested if/else/then
+
+  -- if.else block
+  emitBlockStart ifelse
+  fval <- opgen ops f             -- Generate code for false branch
+  br ifexit                       -- Branch to merge block
+  ifelse <- currName              -- Block may have changed
+  
+  -- if.exit block
+  emitBlockStart ifexit
+  phi [(tval, ifthen), (fval, ifelse)]
+    where
+      frsh = freshName . fromString
+      
 -------------------------------------------------------------------------------
 -- Compilation
 -------------------------------------------------------------------------------

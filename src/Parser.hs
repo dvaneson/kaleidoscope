@@ -20,6 +20,7 @@ binary s assoc = Ex.Infix (reservedOp s >> pure (BinaryOp s)) assoc
 table :: Ex.OperatorTable String () Identity Expr
 table = [ [binary "*" Ex.AssocLeft, binary "/" Ex.AssocLeft]
         , [binary "+" Ex.AssocLeft, binary "-" Ex.AssocLeft]
+        , [binary "<" Ex.AssocLeft]
         ]
 
 expr :: Parser Expr
@@ -57,11 +58,22 @@ call = do
   args <- parens $ commaSep expr
   pure $ Call name args
 
+ifthen :: Parser Expr
+ifthen = do
+  reserved "if"
+  cond <- expr
+  reserved "then"
+  tr <- expr
+  reserved "else"
+  fl <- expr
+  pure $ If cond tr fl
+
 factor :: Parser Expr
 factor = try floating
       <|> try int
       <|> try call
       <|> try variable
+      <|> try ifthen
       <|> (parens expr)
 
 defn :: Parser Expr
