@@ -1,3 +1,5 @@
+{-# LANGUAGE ForeignFunctionInterface #-}
+
 module Main where
 
 import Parser
@@ -10,6 +12,11 @@ import System.Environment
 import System.Console.Haskeline
 
 import qualified LLVM.AST as AST
+
+import Foreign.C.Types
+
+foreign import ccall safe "putchard" putchard
+  :: Double -> Double
 
 initModule :: AST.Module
 initModule = emptyModule "my cool jit" 
