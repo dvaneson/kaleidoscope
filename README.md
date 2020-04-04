@@ -5,7 +5,7 @@ JIT compiler for the toy language Kaleidoscope. Based on a [tutorial](http://www
 You will need GHC 7.8 or newer as well as LLVM 6.0.
 
 ## Building with Stack
-First
+First, to build the executable do
 
 ```$ stack build```
 
