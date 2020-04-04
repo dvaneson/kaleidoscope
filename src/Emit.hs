@@ -81,14 +81,19 @@ binops = Map.fromList [
 -- Gets an operator from the operator list based on the name provided
 getop 
   :: MonadIRBuilder m
-  => [Operand]         -- List of available operators
-  -> Name              -- Name of operator to find
-  -> m Operand         -- Found operator
+  => [Operand]         -- List of available operand
+  -> Name              -- Name of operand to find
+  -> m Operand         -- Found operand
 getop [] var = error $ "Local variable not in scope: " ++ show var
 getop (LocalReference ty nm:xs) var = 
-  if nm == var
-     then pure $ LocalReference ty nm
-     else getop xs var
+  if nm /= var
+    then getop xs var
+    else case ty of
+      -- If operand is a pointer, load it into a new operand
+      (PointerType typ _ ) -> do
+        lval <- load (LocalReference ty nm) 0
+        pure $ lval
+      _                    -> pure $ LocalReference ty nm
 
 -- Generates a fresh variable name from a String
 frsh :: MonadIRBuilder m => String -> m Name
@@ -190,27 +195,65 @@ opgen ops (S.If c t f) = do
   ifelse <- frsh "if.else"
   ifexit <- frsh "if.exit"
 
-  -- entry block
+  -- %entry
+  ------------------
   cond <- opgen ops c
-  test <- fcmp FP.ONE false cond
+  test <- fcmp FP.ONE false cond  -- Test if loop condition is true (1.0)
   condBr test ifthen ifelse       -- Branch based on condition
 
-  -- if.then block
+  -- if.then
+  ------------------
   emitBlockStart ifthen
   tval <- opgen ops t             -- Generate code for true branch
   br ifexit                       -- Branch to the merge block
   ifthen <- currName              -- Block may have changed from opgen, 
                                   -- i.e. nested if/else/then
 
-  -- if.else block
+  -- if.else
+  ------------------
   emitBlockStart ifelse
   fval <- opgen ops f             -- Generate code for false branch
   br ifexit                       -- Branch to merge block
   ifelse <- currName              -- Block may have changed
   
-  -- if.exit block
+  -- if.exit
+  ------------------
   emitBlockStart ifexit
   phi [(tval, ifthen), (fval, ifelse)]
+
+opgen ops (S.For ivar start cond step body) = do
+  forloop <- frsh "for.loop"
+  forexit <- frsh "for.exit"
+
+  -- %entry
+  ------------------
+  i <- aloci
+  istart <- opgen ops start       -- Generate loop variable initial value
+  stepval <- opgen ops step       -- Generate loop variable step
+
+  store i 0 istart                -- Store the loop variable initial value
+  let newops = i:ops              -- Updating operand list so subexpressions can use i
+  br forloop                      -- Branch to loop body block
+
+  -- for.loop
+  ------------------
+  emitBlockStart forloop
+  ival <- load i 0                -- Load current loop iteration
+  opgen newops body               -- Generate the loop body
+  inext <- fadd ival stepval      -- Increment loop variable
+  store i 0 inext
+
+  cond <- opgen newops cond       -- Generate the loop condition
+  test <- fcmp FP.ONE false cond  -- Test if loop condition is true (1.0)
+  condBr test forloop forexit     -- Generate the loop condition
+
+  -- for.exit
+  ------------------
+  emitBlockStart forexit
+  pure zero                       -- Always returns 0.0
+    where
+      aloci = named (alloca T.double Nothing 0) (fromString ivar)
+
       
 -------------------------------------------------------------------------------
 -- Compilation
